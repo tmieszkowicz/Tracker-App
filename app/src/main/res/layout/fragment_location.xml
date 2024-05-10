@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".fragments.location">
+
+    <TextView
+        android:id="@+id/location"
+        android:textColor="@color/colorPrimary"
+        android:textSize="30sp"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="You are not in beacons range." />
+
+
+    <ToggleButton
+        android:id="@+id/toggleButton"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_gravity="center|bottom"
+        android:text="ToggleButton"
+        android:textSize="20sp"
+        android:textOff="THIS DEVICE IS IN STANDBY"
+        android:textOn="THIS DEVICE IS NOW ACTIVE" />
+
+</FrameLayout>
