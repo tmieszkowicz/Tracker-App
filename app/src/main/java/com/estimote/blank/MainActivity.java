@@ -2,16 +2,13 @@ package com.estimote.blank;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.annotation.NonNull;
 import android.support.design.widget.TabLayout;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.TextView;
 
 import com.estimote.mustard.rx_goodness.rx_requirements_wizard.RequirementsWizardFactory;
@@ -22,7 +19,6 @@ import com.estimote.proximity_sdk.api.ProximityZone;
 import com.estimote.proximity_sdk.api.ProximityZoneBuilder;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -32,180 +28,114 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private ProximityObserver proximityObserver;
-    TabLayout tabLayout;
-    ViewPager viewPager;
-    ViewPagerAdapter viewPagerAdapter;
-    Connection connection;
-    String zoneName = "storage";
-    String notInZoneText = "You are not in beacons range.";
-    static String defaultZoneName = "storage";
+    private static final String DEFAULT_ZONE_NAME = "storage";
+    private static final String NOT_IN_ZONE_TEXT = "You are not in beacons range.";
 
+    private ProximityObserver proximityObserver;
+    private TabLayout tabLayout;
+    private ViewPager viewPager;
+    private ViewPagerAdapter viewPagerAdapter;
+    private Connection connection;
+    private String zoneName = DEFAULT_ZONE_NAME;
     private Button buttonToggle;
-    int activeStatus=0;
+    private int activeStatus = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //**********************************************************************************************************//
-        //DATABASE CONNECTION SET UP
-        //**********************************************************************************************************//
-        //String sqlstatement;
-        //Statement statement;
-        //ResultSet resultSet;
+        setupProximityObserver();
+        setupProximityZones();
+        setupRequirementsWizard();
+        setupToggleButton();
+    }
 
-        //ConSQL conSQL = new ConSQL();
-        //connection = conSQL.conClass();
+    private void setupProximityObserver() {
+        EstimoteCloudCredentials estimoteCloudCredentials = ((MyApplication) getApplication()).estimoteCloudCredentials;
 
-        //**********************************************************************************************************//
-        //CREDENTIALS SET UP
-        //**********************************************************************************************************//
-        EstimoteCloudCredentials estimoteCloudCredentials =
-                ((MyApplication) getApplication()).estimoteCloudCredentials;
-
-        //**********************************************************************************************************//
-        //PROXIMITY OBSERVER SET UP
-        //**********************************************************************************************************//
-        this.proximityObserver =
-                new ProximityObserverBuilder(getApplicationContext(), estimoteCloudCredentials)
-                        .onError(throwable -> {
-                            Log.e("app", "proximity observer error: " + throwable);
-                            return null;
-                        })
-                        .withBalancedPowerMode()
-                        .build();
-
-        //**********************************************************************************************************//
-        //ZONES SET UP
-        //**********************************************************************************************************//
-        ProximityZone zone1 = new ProximityZoneBuilder()
-                .forTag("tomasz-mieszkowicz-s-proxi-lfr")
-                .inNearRange()
-                .onEnter(context -> {
-                    zoneName = context.getAttachments().get("tomasz-mieszkowicz-s-proxi-lfr/title");
-                    Log.d("app", "You are in " + zoneName + " room.");
-
-                    TextView textView = findViewById(R.id.location);
-                    textView.setText("You are in " + zoneName +  " room.");
-
-                    sendDatabaseStatement(zoneName + " room");
-
+        proximityObserver = new ProximityObserverBuilder(getApplicationContext(), estimoteCloudCredentials)
+                .onError(throwable -> {
+                    Log.e("app", "Proximity observer error: " + throwable);
                     return null;
                 })
-                .onExit(context -> {
-                    zoneName = defaultZoneName;
-                    Log.d("app", "You left.");
-                    TextView textView = findViewById(R.id.location);
-                    textView.setText(notInZoneText);
-                    sendDatabaseStatement(zoneName);
-                    return null;
-                })
+                .withBalancedPowerMode()
                 .build();
-        ProximityZone zone2 = new ProximityZoneBuilder()
-                .forTag("tomasz-mieszkowicz-s-proxi-lft")
-                .inNearRange()
-                .onEnter(context -> {
-                    zoneName = context.getAttachments().get("tomasz-mieszkowicz-s-proxi-lfr/title");
-                    Log.d("app", "You are in " + zoneName + " room.");
+    }
 
-                    TextView textView = findViewById(R.id.location);
-                    textView.setText("You are in " + zoneName +  " room.");
-
-                    sendDatabaseStatement(zoneName + " room");
-
-                    return null;
-                })
-                .onExit(context -> {
-                    zoneName = defaultZoneName;
-                    Log.d("app", "You left.");
-                    TextView textView = findViewById(R.id.location);
-                    textView.setText(notInZoneText);
-                    sendDatabaseStatement(zoneName);
-                    return null;
-                })
-                .build();
-        ProximityZone zone3 = new ProximityZoneBuilder()
-                .forTag("tomasz-mieszkowicz-s-proxi-lfy")
-                .inNearRange()
-                .onEnter(context -> {
-                    zoneName = context.getAttachments().get("tomasz-mieszkowicz-s-proxi-lfr/title");
-                    Log.d("app", "You are in " + zoneName + " room.");
-
-                    TextView textView = findViewById(R.id.location);
-                    textView.setText(notInZoneText);
-
-                    sendDatabaseStatement(zoneName + " room");
-
-                    return null;
-                })
-                .onExit(context -> {
-                    zoneName = defaultZoneName;
-                    Log.d("app", "You left.");
-                    TextView textView = findViewById(R.id.location);
-                    textView.setText(notInZoneText);
-                    sendDatabaseStatement(zoneName);
-                    return null;
-                })
-                .build();
+    private void setupProximityZones() {
+        ProximityZone zone1 = createProximityZone("tomasz-mieszkowicz-s-proxi-lfr");
+        ProximityZone zone2 = createProximityZone("tomasz-mieszkowicz-s-proxi-lft");
+        ProximityZone zone3 = createProximityZone("tomasz-mieszkowicz-s-proxi-lfy");
 
         List<ProximityZone> zoneList = new ArrayList<>(Arrays.asList(zone1, zone2, zone3));
 
-        //**********************************************************************************************************//
-        //PROXIMITY OBSERVER START IF REQUIREMENTS MEET
-        //**********************************************************************************************************//
         RequirementsWizardFactory
                 .createEstimoteRequirementsWizard()
                 .fulfillRequirements(this,
-                        // onRequirementsFulfilled
                         () -> {
-                            Log.d("app", "requirements fulfilled");
+                            Log.d("app", "Requirements fulfilled");
                             proximityObserver.startObserving(zoneList);
                             return null;
                         },
-                        // onRequirementsMissing
                         requirements -> {
-                            Log.e("app", "requirements missing: " + requirements);
+                            Log.e("app", "Requirements missing: " + requirements);
                             return null;
                         },
-                        // onError
                         throwable -> {
-                            Log.e("app", "requirements error: " + throwable);
+                            Log.e("app", "Requirements error: " + throwable);
                             return null;
                         });
-
-
-    buttonToggle=findViewById(R.id.toggleButton);
-
-    buttonToggle.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-            activeStatus ^= 1;
-
-            if(zoneName.equals("storage")) sendDatabaseStatement(zoneName);
-                else sendDatabaseStatement(zoneName + " room");
-
-        }
-    });
     }
 
-    public void sendDatabaseStatement(String zone){
+    private ProximityZone createProximityZone(String tag) {
+        return new ProximityZoneBuilder()
+                .forTag(tag)
+                .inNearRange()
+                .onEnter(context -> {
+                    zoneName = context.getAttachments().get("tomasz-mieszkowicz-s-proxi-lfr/title");
+                    Log.d("app", "You are in " + zoneName + " room.");
+                    updateLocationText("You are in " + zoneName + " room.");
+                    sendDatabaseStatement(zoneName + " room");
+                    return null;
+                })
+                .onExit(context -> {
+                    zoneName = DEFAULT_ZONE_NAME;
+                    Log.d("app", "You left.");
+                    updateLocationText(NOT_IN_ZONE_TEXT);
+                    sendDatabaseStatement(zoneName);
+                    return null;
+                })
+                .build();
+    }
+
+    private void updateLocationText(String text) {
+        TextView textView = findViewById(R.id.location);
+        textView.setText(text);
+    }
+
+    private void setupToggleButton() {
+        buttonToggle = findViewById(R.id.toggleButton);
+        buttonToggle.setOnClickListener(view -> {
+            activeStatus ^= 1;
+            String location = zoneName.equals(DEFAULT_ZONE_NAME) ? zoneName : zoneName + " room";
+            sendDatabaseStatement(location);
+        });
+    }
+
+    public void sendDatabaseStatement(String zone) {
         ConSQL conSQL = new ConSQL();
         connection = conSQL.conClass();
 
-        Date date = new Date();
-
-        if(connection!=null){
-            try{
-                String sqlstatement = "INSERT INTO [devicesStatus] ([deviceName], [currentLocation], [dateAndTime], [isActive]) VALUES ('"+Build.MODEL+"', '"+zone+"', '"+new Timestamp(date.getTime())+"','"+activeStatus+"');";
-
+        if (connection != null) {
+            try {
+                String sqlStatement = "INSERT INTO [devicesStatus] ([deviceName], [currentLocation], [dateAndTime], [isActive]) " +
+                        "VALUES ('" + Build.MODEL + "', '" + zone + "', '" + new Timestamp(new Date().getTime()) + "', '" + activeStatus + "');";
                 Statement statement = connection.createStatement();
-                statement.execute(sqlstatement);
+                statement.execute(sqlStatement);
                 connection.close();
-            }
-            catch (Exception e){
-                Log.e("Error",e.getMessage());
+            } catch (Exception e) {
+                Log.e("Error", e.getMessage());
             }
         }
     }
